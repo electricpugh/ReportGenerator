@@ -23,7 +23,7 @@ ui <- navbarPage(title = "Real-Time Water Quality Report Generator",
                                           choices = sort(stationselector_list$STAT_NAME),
                                           selected = NULL),
                               dateRangeInput('dateselector', label = "Date Range"),
-                              actionButton('stationselector_go', "Edit")
+                              actionButton('stationselector_go', "Load Data")
                             ),
                             mainPanel(
                               dataTableOutput('test')
@@ -35,7 +35,8 @@ ui <- navbarPage(title = "Real-Time Water Quality Report Generator",
 
 # Server-side Code --------------------------------------------------------
 server <- function(input, output, session) {
-  raw <- reactiveValues()
+  raw   <- reactiveValues()
+
   # observeEvent(input$stationselector_go, { # On clicking 'stationselector_go', move active tab to Edit Data.
   #   updateTabsetPanel(session = session, inputId = "tabs", selected = "Edit Data")
   # })
@@ -55,7 +56,7 @@ server <- function(input, output, session) {
     progress$close()
     return(sqlQuery(channel = odbcDriverConnect("Driver={Oracle in OraClient11g_home1};Dbq=sde8;Uid=adrs_viewer;Pwd=adrs_viewer2005;"), query = query))
   })
-  
+
   output$test <- renderDataTable(raw$data())
 }
 
