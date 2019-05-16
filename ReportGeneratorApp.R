@@ -9,7 +9,7 @@ stationselector_list <- sqlQuery(channel = ADRS_con, query = "select * from ADRS
 odbcClose(ADRS_con)
 
 ui <- navbarPage(title = "Real-Time Water Quality Report Generator",
-                 id = NULL,
+                 id = "tabs",
                  selected = NULL,
                  position = 'static-top',
                  inverse = TRUE,
@@ -20,12 +20,13 @@ ui <- navbarPage(title = "Real-Time Water Quality Report Generator",
                             sidebarPanel(
                               selectInput('stationselector',
                                           label = "Station Name",
-                                          choices = sort(stationselector_list$STAT_NAME)),
+                                          choices = sort(stationselector_list$STAT_NAME),
+                                          selected = NULL),
                               dateRangeInput('dateselector', label = "Date Range"),
-                              actionButton('stationselector_go', "Submit")
+                              actionButton('stationselector_go', "Edit")
                             ),
                             mainPanel(
-                              tableOutput('test')
+                              dataTableOutput('test')
                             )
                           )),
                  tabPanel("Edit Data"),
@@ -35,16 +36,27 @@ ui <- navbarPage(title = "Real-Time Water Quality Report Generator",
 # Server-side Code --------------------------------------------------------
 server <- function(input, output, session) {
   raw <- reactiveValues()
+  # observeEvent(input$stationselector_go, { # On clicking 'stationselector_go', move active tab to Edit Data.
+  #   updateTabsetPanel(session = session, inputId = "tabs", selected = "Edit Data")
+  # })
   
-  raw$data <- eventReactive(input$stationselector_go, {
-    station <- stationselector_list[stationselector_list$STAT_NAME == input$stationselector, 1]
+  raw$data <- eventReactive(input$stationselector_go, { # Creates ADRS query for user-selected station and dates.
+    progress     <- Progress$new(session, min = 0, max = 1)
+    progress$set(message = "Gathering data", value = 0)
+    station      <- stationselector_list[stationselector_list$STAT_NAME == input$stationselector, 1]
+    progress$set(value = 0.2)
     date_from    <- input$dateselector[1]
+    progress$set(value = 0.4)
     date_to      <- input$dateselector[2]
+    progress$set(value = 0.6)
     query        <- paste0("select * from ADRS.L_", station, " where NST_DATI between to_date('", date_from, "','YYYY/MM/DD') and to_date('", date_to, "','YYYY/MM/DD')")
+    progress$set(message = "Gathering data complete", value = 1)
+    Sys.sleep(0.25)
+    progress$close()
     return(sqlQuery(channel = odbcDriverConnect("Driver={Oracle in OraClient11g_home1};Dbq=sde8;Uid=adrs_viewer;Pwd=adrs_viewer2005;"), query = query))
   })
   
-  output$test <- renderTable(raw$data())
+  output$test <- renderDataTable(raw$data())
 }
 
 shinyApp(ui = ui, server = server)
