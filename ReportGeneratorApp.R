@@ -25,7 +25,7 @@ ui <- navbarPage(title = "Real-Time Water Quality Report Generator",
                               actionButton('stationselector_go', "Submit")
                             ),
                             mainPanel(
-                              tableOutput('raw')
+                              tableOutput('test')
                             )
                           )),
                  tabPanel("Edit Data"),
@@ -35,14 +35,16 @@ ui <- navbarPage(title = "Real-Time Water Quality Report Generator",
 # Server-side Code --------------------------------------------------------
 server <- function(input, output, session) {
   raw <- reactiveValues()
-  # raw_station_number <- reactiveVal()
-  # raw_station_number$value <- stationselector_list[1, stationselector_list$STAT_NAME == input$stationselector]
-  raw_query <- reactiveVal()
-  raw_query$value <- paste0("select * from ADRS.L_", stationselector_list[1, stationselector_list$STAT_NAME == input$stationselector], "where NST_DATI between to_date('", input$dateselector[1], "','YYYY/MM/DD') and to_date('", input$dateselctor[2], "','YYYY/MM/DD')")
+  
   raw$data <- eventReactive(input$stationselector_go, {
-    sqlQuery(channel = ADRS_con, query = raw_query)
+    station <- stationselector_list[stationselector_list$STAT_NAME == input$stationselector, 1]
+    date_from    <- input$dateselector[1]
+    date_to      <- input$dateselector[2]
+    query        <- paste0("select * from ADRS.L_", station, " where NST_DATI between to_date('", date_from, "','YYYY/MM/DD') and to_date('", date_to, "','YYYY/MM/DD')")
+    return(sqlQuery(channel = odbcDriverConnect("Driver={Oracle in OraClient11g_home1};Dbq=sde8;Uid=adrs_viewer;Pwd=adrs_viewer2005;"), query = query))
   })
-  output$raw <- renderTable(raw$data())
+  
+  output$test <- renderTable(raw$data())
 }
 
 shinyApp(ui = ui, server = server)
