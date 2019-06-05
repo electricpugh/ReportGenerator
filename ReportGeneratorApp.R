@@ -35,7 +35,8 @@ ui <- navbarPage(title = "Real-Time Water Quality Report Generator",
 
 # Server-side Code --------------------------------------------------------
 server <- function(input, output, session) {
-  raw   <- reactiveValues()
+  raw <- reactiveValues()
+  #raw             <- reactiveValues()
 
   # observeEvent(input$stationselector_go, { # On clicking 'stationselector_go', move active tab to Edit Data.
   #   updateTabsetPanel(session = session, inputId = "tabs", selected = "Edit Data")
