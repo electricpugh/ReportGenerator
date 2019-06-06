@@ -3,6 +3,9 @@ require(RODBC)
 require(tidyr)
 require(ggplot2)
 require(dplyr)
+require(lubridate)
+
+source("scripts.R") # Load scripts file 
 
 ADRS_con <- odbcDriverConnect("Driver={Oracle in OraClient11g_home1};Dbq=sde8;Uid=adrs_viewer;Pwd=adrs_viewer2005;")
 stationselector_list <- sqlQuery(channel = ADRS_con, query = "select * from ADRS.STATIONS")
@@ -25,11 +28,15 @@ ui <- navbarPage(title = "Real-Time Water Quality Report Generator",
                                           multiple = TRUE,
                                           selected = NULL),
                               dateRangeInput('dateselector', label = "Date Range"),
+                              radioButtons('includeextrahydro_tf',
+                                           label = "Include Extra Hydrometric Data?",
+                                           choices = c("Yes" = "TRUE",
+                                                       "No"  = "FALSE"),
+                                           selected = "Yes"),
                               actionButton('stationselector_go', "Load Data")
                             ),
                             mainPanel(
-                              dataTableOutput('test'),
-                              textOutput('test2')
+                              verbatimTextOutput('test2')
                             )
                           )),
                  tabPanel("Edit Data"),
@@ -42,6 +49,7 @@ server <- function(input, output, session) {
   
   raw$data <- eventReactive(input$stationselector_go, { # Creates ADRS query for user-selected station and dates.
     x <- list()
+    y <- input$includeextrahydro_tf
     #station      <- stationselector_list[stationselector_list$STAT_NAME == input$stationselector, 1]
     station      <- stationselector_list[stationselector_list$STAT_NAME %in% input$stationselector, 1]
     date_from    <- input$dateselector[1]
@@ -58,12 +66,9 @@ server <- function(input, output, session) {
       progress$close()
       x[[i]] <- sqlQuery(channel = odbcDriverConnect("Driver={Oracle in OraClient11g_home1};Dbq=sde8;Uid=adrs_viewer;Pwd=adrs_viewer2005;"), query = query)
     }
-    browser()
-    return(x)
+    return(lapply(x, groom, y = TRUE))
   }, label = "Get data")
-  
-  output$test <- renderDataTable(raw$data()[2])
-  output$test2 <- renderText(length(raw$data()))
+  output$test2 <- renderPrint(raw$data())
 }
 
 shinyApp(ui = ui, server = server)
