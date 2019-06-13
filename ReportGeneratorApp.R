@@ -31,12 +31,11 @@ ui <- navbarPage(title = "Real-Time Water Quality Report Generator",
                               radioButtons('includeextrahydro_tf',
                                            label = "Include Extra Hydrometric Data?",
                                            choices = c("Yes" = "TRUE",
-                                                       "No"  = "FALSE"),
-                                           selected = "Yes"),
+                                                       "No"  = "FALSE")),
                               actionButton('stationselector_go', "Load Data")
                             ),
                             mainPanel(
-                              verbatimTextOutput('test2')
+                              tableOutput('test2')
                             )
                           )),
                  tabPanel("Edit Data"),
@@ -50,15 +49,14 @@ server <- function(input, output, session) {
   raw$data <- eventReactive(input$stationselector_go, { # Creates ADRS query for user-selected station and dates.
     x <- list()
     y <- input$includeextrahydro_tf
-    #station      <- stationselector_list[stationselector_list$STAT_NAME == input$stationselector, 1]
     station      <- stationselector_list[stationselector_list$STAT_NAME %in% input$stationselector, 1]
-    date_from    <- input$dateselector[1]
-    date_to      <- input$dateselector[2]
+    date_from    <- paste(input$dateselector[1], "00:00:00", sep = " ") # add time to date to satisfy Oracle SQL 'between' query
+    date_to      <- paste(input$dateselector[2], "23:59:59", sep = " ") # add time to date to satisfy Oracle SQL 'between' query
     progress     <- Progress$new(session, min = 0, max = 1)
     progress$set(message = "Gathering data", value = 0)
     for (i in 1:length(station)) {
       progress$set(value = 0.2)
-      query <- paste0("select * from ADRS.L_", station[i], " where NST_DATI between to_date('", date_from, "','YYYY/MM/DD') and to_date('", date_to, "','YYYY/MM/DD')")
+      query <- paste0("select * from ADRS.L_", station[i], " where NST_DATI between to_date('", date_from, "','YYYY/MM/DD HH24:MI:SS') and to_date('", date_to, "','YYYY/MM/DD HH24:MI:SS')")
       progress$set(value = 0.4)
       progress$set(value = 0.6)
       progress$set(message = "Gathering data complete", value = 1)
@@ -68,7 +66,7 @@ server <- function(input, output, session) {
     }
     return(lapply(x, groom, y = TRUE))
   }, label = "Get data")
-  output$test2 <- renderPrint(raw$data())
+  output$test2 <- renderTable(raw$data())
 }
 
 shinyApp(ui = ui, server = server)
