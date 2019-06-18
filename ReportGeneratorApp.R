@@ -29,16 +29,24 @@ ui <- navbarPage(title = "Real-Time Water Quality Report Generator",
                                           selected = NULL),
                               dateRangeInput('dateselector', label = "Date Range"),
                               radioButtons('includeextrahydro_tf',
-                                           label = "Include Extra Hydrometric Data?",
+                                           label = "Remove Extra Hydrometric Data?",
                                            choices = c("Yes" = "TRUE",
                                                        "No"  = "FALSE")),
-                              actionButton('stationselector_go', "Load Data")
+                              actionButton('stationselector_go', "Load Data"),
+                              actionButton('test', "Browser test")
                             ),
                             mainPanel(
-                              tableOutput('test2')
+                              actionButton('download_rawdata', "Download Raw Data"),
+                              br(),
+                              dataTableOutput('dataview')
                             )
                           )),
-                 tabPanel("Edit Data"),
+                 tabPanel("Edit Data",
+                          sidebarLayout(
+                            sidebarPanel(
+                            uiOutput('ui_edit_station')
+                          ),
+                          mainPanel())),
                  tabPanel("Export Data")
 )
 
@@ -64,9 +72,32 @@ server <- function(input, output, session) {
       progress$close()
       x[[i]] <- sqlQuery(channel = odbcDriverConnect("Driver={Oracle in OraClient11g_home1};Dbq=sde8;Uid=adrs_viewer;Pwd=adrs_viewer2005;"), query = query)
     }
-    return(lapply(x, groom, y = TRUE))
+    return(lapply(x, groom, y = input$includeextrahydro_tf))
   }, label = "Get data")
-  output$test2 <- renderTable(raw$data())
+  output$dataview <- renderDataTable(bind_rows(raw$data()))
+  observeEvent(input$download_rawdata, {
+    showNotification(
+      ui = "In the future this will allow you to download raw data",
+      duration = 3,
+      type = "message"
+    )
+  })
+  observeEvent(input$test, { # Browser test
+    browser()
+  })
+  output$ui_edit_station <- renderUI(
+    if (is.null(raw$data())) {
+      return(NULL)
+    } else {
+      verticalLayout(
+        selectInput('edit_station_selector',
+                    label = "Choose station to edit",
+                    choices = unique(raw$data()$STAT_NUM),
+                    selected = NULL),
+        actionButton('edit_go', label = "Edit")
+      )}
+  )
+  
 }
 
 shinyApp(ui = ui, server = server)
